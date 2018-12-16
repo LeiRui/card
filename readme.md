@@ -553,6 +553,7 @@ Data types and the supported fill methods are shown in Table 4-6.
 
 
 It is worth noting that IoTDB will give error prompts for fill methods that are not supported by data types, as shown below:
+
 ![](./chapter4-fig/4.19.jpg)
 
 When the fill method is not specified, each data type bears its own default fill methods and parameters. The corresponding relationship is shown in Table 4-7.
@@ -570,10 +571,223 @@ When the fill method is not specified, each data type bears its own default fill
 
 Note: In version 0.7.0, at least one fill method should be specified in the Fill statement.
 
+### 4.4.5 Row and Column Control over Query Results
+IoTDB provides LIMIT/SLIMIT clause and OFFSET/SOFFSET clause in order to make users have more control over query results. The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
+
+This chapter mainly introduces related examples of row and column control of query results. Detailed SQL syntax and usage specifications can be found in Section 7.1.3.7 of this manual. You can also use the Java JDBC standard interface to execute queries, as detailed in section 7.2.
+
+#### 4.4.5.1 Row Control over Query Results
+By using LIMIT and OFFSET clauses, users can control the query results in a row-related manner. We will demonstrate how to use LIMIT and OFFSET clauses through the following examples.
+
+**Example 1: basic LIMIT clause**
+
+The SQL statement is:
+```
+select status, temperature from root.ln.wf01.wt01 limit 10
+```
+which means:
+
+The selected device is ln group wf01 plant wt01 device; the selected time series is "status" and "temperature". The SQL statement requires the first 10 rows of the query result be returned.
+
+The result is shown below:
+
+![](./chapter4-fig/4.20.jpg)
 
 
+**Example 2: LIMIT clause with OFFSET**
+
+The SQL statement is:
+```
+select status, temperature from root.ln.wf01.wt01 limit 5 offset 3
+```
+which means:
+
+The selected device is ln group wf01 plant wt01 device; the selected time series is "status" and "temperature". The SQL statement requires rows 3 to 7 of the query result be returned (with the first row numbered as row 0).
+
+The result is shown below:
+
+![](./chapter4-fig/4.21.jpg)
+
+**Example 3: LIMIT clause combined with WHERE clause**
+
+The SQL statement is:
+```
+select status,temperature 
+from root.ln.wf01.wt01 
+where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 
+limit 2 
+offset 3
+```
+which means:
+
+The selected device is ln group wf01 plant wt01 device; the selected time series is "status" and "temperature". The SQL statement requires rows 3 to 4 of  the status and temperature sensor values between the time point of "2017-11-01T00:05:00.000" and "2017-11-01T00:12:00.000" be returned (with the first row numbered as row 0).
+
+The result is shown below:
+
+![](./chapter4-fig/4.22.jpg)
+
+**Example 4: LIMIT clause combined with GROUP BY clause**
+
+The SQL statement is:
+```
+select count(status), max_value(temperature) 
+from root.ln.wf01.wt01 
+group by (1d, [2017-11-01T00:00:00, 2017-11-07T23:00:00]) 
+limit 5 offset 3
+```
+which means:
+
+For the specific meaning of the GROUP BY clause, see Section 4.4.2.1 of this chapter. The SQL statement clause requires rows 3 to 7 of the query result be returned (with the first row numbered as row 0).
+
+The result is shown below:
+
+![](./chapter4-fig/4.23.jpg)
+
+It is worth noting that because the current FILL clause can only fill in the missing value of time series at a certain time point, that is to say, the execution result of FILL clause is exactly one line, so LIMIT and OFFSET are not expected to be used in combination with FILL clause, otherwise errors will be prompted. For example, executing the following SQL statement:
+```
+select temperature from root.sgcc.wf03.wt01 
+where time = 2017-11-01T16:37:50.000 
+fill(float[previous, 1m]) 
+limit 10
+```
+The SQL statement will not be executed and the corresponding error prompt is given as follows:
+
+![](./chapter4-fig/4.24.jpg)
+
+#### 4.4.5.2 Column Control over Query Results
+By using SLIMIT and SOFFSET clauses, users can control the query results in a column-related manner. We will demonstrate how to use SLIMIT and SOFFSET clauses through the following examples.
+
+**Example 1: basic SLIMIT clause**
+
+The SQL statement is:
+```
+select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1
+```
+which means:
+
+The selected device is ln group wf01 plant wt01 device; the selected time series is the first column under this device, i.e., the power supply status. The SQL statement requires the status sensor values between the time point of "2017-11-01T00:05:00.000" and "2017-11-01T00:12:00.000" be selected.
+
+The result is shown below:
+
+![](./chapter4-fig/4.25.jpg)
 
 
+**Example 2: SLIMIT clause with SOFFSET**
+
+The SQL statement is:
+```
+select * from root.ln.wf01.wt01 
+where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 
+slimit 1 soffset 1
+```
+which means:
+
+The selected device is ln group wf01 plant wt01 device; the selected time series is the second column under this device, i.e., the temperature. The SQL statement requires the temperature sensor values between the time point of "2017-11-01T00:05:00.000" and "2017-11-01T00:12:00.000" be selected.
+
+The result is shown below:
+
+![](./chapter4-fig/4.26.jpg)
 
 
+**Example 3: SLIMIT clause combined with GROUP BY clause**
 
+The SQL statement is:
+```
+select max_value(*) from root.ln.wf01.wt01 
+group by (1d, [2017-11-01T00:00:00, 2017-11-07T23:00:00]) 
+slimit 1 soffset 1
+```
+which means:
+
+For the specific meaning of the GROUP BY clause, see Section 4.4.2.1 of this chapter. The selected device is ln group wf01 plant wt01 device; the selected time series is the second column under this device, i.e., the temperature.
+
+The result is shown below:
+
+![](./chapter4-fig/4.27.jpg)
+
+**Example 4: SLIMIT clause combined with FILL clause**
+
+The SQL statement is:
+```
+select * from root.sgcc.wf03.wt01 
+where time = 2017-11-01T16:37:50.000 
+fill(float[previous, 1m]) 
+slimit 1 soffset 1
+```
+which means:
+
+For the specific meaning of the FILL clause, see Section 4.4.4.1 of this chapter. The selected device is ln group wf01 plant wt01 device; the selected time series is the second column under this device, i.e., the temperature.
+
+The result is shown below:
+
+![](./chapter4-fig/4.28.jpg)
+
+It is worth noting that SLIMIT clause is expected to be used in conjunction with star path or prefix path, and the system will prompt errors when SLIMIT clause is used in conjunction with complete path query. For example, executing the following SQL statement:
+```
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1
+```
+The SQL statement will not be executed and the corresponding error prompt is given as follows:
+![](./chapter4-fig/4.29.jpg)
+
+#### 4.4.5.3 Row and Column Control over Query Results
+In addition to row or column control over query results, IoTDB allows users to control both rows and columns of query results. Here is a complete example with both LIMIT clauses and SLIMIT clauses.
+The SQL statement is:
+```
+select * from root.ln.wf01.wt01 
+limit 10 offset 100 
+slimit 2 soffset 0
+```
+which means:
+
+The selected device is ln group wf01 plant wt01 device; the selected time series is columns 0 to 1 under this device (with the first column numbered as column 0). The SQL statement clause requires rows 100 to 109 of the query result be returned (with the first row numbered as row 0).
+
+The result is shown below:
+
+![](./chapter4-fig/4.30.jpg)
+
+#### 4.4.5.4 Error Handling
+When the parameter N/SN of LIMIT/SLIMIT exceeds the size of the result set, IoTDB will return all the results as expected. For example, the query result of the original SQL statement consists of six rows, and we select the first 100 rows through the LIMIT clause:
+```
+select status,temperature from root.ln.wf01.wt01 
+where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 
+limit 100
+```
+The result is shown below:
+
+![](./chapter4-fig/4.31.jpg)
+
+When the parameter N/SN of LIMIT/SLIMIT clause exceeds the allowable maximum value (N/SN is of type int32), the system will prompt errors. For example, executing the following SQL statement:
+```
+select status,temperature from root.ln.wf01.wt01 
+where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 
+limit 1234567890123456789
+```
+The SQL statement will not be executed and the corresponding error prompt is given as follows:
+![](./chapter4-fig/4.32.jpg)
+
+When the parameter N/SN of LIMIT/SLIMIT clause is not a positive intege, the system will prompt errors. For example, executing the following SQL statement:
+```
+select status,temperature from root.ln.wf01.wt01 
+where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 
+limit 13.1
+```
+The SQL statement will not be executed and the corresponding error prompt is given as follows:
+![](./chapter4-fig/4.33.jpg)
+
+When the parameter OFFSET of LIMIT clause exceeds the size of the result set, IoTDB will return an empty result set. For example, executing the following SQL statement:
+```
+select status,temperature from root.ln.wf01.wt01 
+where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 
+limit 2 offset 6
+```
+The result is shown below:
+![](./chapter4-fig/4.34.jpg)
+
+When the parameter SOFFSET of SLIMIT clause is not smaller than the number of available time series, the system will prompt errors. For example, executing the following SQL statement:
+```
+select * from root.ln.wf01.wt01 
+where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 
+slimit 1 soffset 2
+```
+The SQL statement will not be executed and the corresponding error prompt is given as follows:
+![](./chapter4-fig/4.35.jpg)
