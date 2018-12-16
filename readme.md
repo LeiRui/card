@@ -24,7 +24,7 @@ Based on the description of the above sample scenarios, we provide you with a si
 
 The basic information of the data is shown in Table 4-1.
 
-**Table 4-1 The basic information of the data**
+<center>**Table 4-1 The basic information of the data**</center>
 
 |Name  |Data Type|  Coding | Meaning |
 |:---|:---|:---|:---|
@@ -45,7 +45,8 @@ Before importing data to IoTDB, we first select the appropriate data storage mod
 ### 4.2.1 Storage Model Selection
 According to the data attribute layers described in Section 4.1.1 of this chapter, we can express it as an attribute hierarchy structure based on the coverage of attributes and the subordinate relationship between them, as shown in Figure 4.1 below. Its hierarchical relationship is: group layer - electric field layer - device layer - sensor layer. ROOT is the root node, and each node of sensor layer is called a leaf node. In the process of using IoTDB, you can directly connect the attributes on the path from ROOT node to each leaf node with ".", thus forming the name of a time series in IoTDB. For example, The left-most path in Figure 4.1 can generate a time series named `ROOT.ln.wf01.wt01.status`.
 
-![](./chapter4-fig/4.1.jpg)
+<center>![](./chapter4-fig/4.1.jpg)</center>
+<center>**Figure 4.1 Attribute hierarchy structure**</center>
 
 After getting the name of the time series, we need to set up the storage group according to the actual scenario and scale of the data. Because in the scenario of this chapter data is usually arrived in the unit of groups (i.e., data may be across electric fields and devices), in order to avoid frequent switching of IO when writing data, and to meet the user's requirement of physical isolation of data in the unit of  groups, we set the storage group at the group layer.
 
@@ -198,9 +199,15 @@ The execution result of this SQL statement is as follows:
 #### 4.4.1.2 Select Multiple Columns of Data Based on a Time Interval
 The SQL statement is:
 ```
-select status, temperature from root.ln.wf01.wt01 
+select 
+    status, temperature 
+from 
+    root.ln.wf01.wt01 
 where 
-time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000
+    time > 2017-11-01T00:05:00.000 
+    and 
+    time < 2017-11-01T00:12:00.000
+;
 ```
 which means:
 
@@ -212,11 +219,15 @@ The execution result of this SQL statement is as follows:
 #### 4.4.1.3 Select Multiple Columns of Data for the Same Device According to Multiple Time Intervals
 IoTDB supports specifying multiple time interval conditions in a query. Users can combine time interval conditions at will according to their needs. For example, the SQL statement is:
 ```
-select status,temperature from root.ln.wf01.wt01 
+select 
+    status,temperature 
+from 
+    root.ln.wf01.wt01 
 where 
     (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000) 
-or 
+    or 
     (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000)
+;
 ```
 which means:
 
@@ -228,11 +239,15 @@ The execution result of this SQL statement is as follows:
 #### 4.4.1.4 Choose Multiple Columns of Data for Different Devices According to Multiple Time Intervals
 The system supports the selection of data in any column in a query, i.e., the selected columns can come from different devices. For example, the SQL statement is:
 ```
-select wf01.wt01.status,wf02.wt02.hardware from root.ln 
+select 
+    wf01.wt01.status,wf02.wt02.hardware 
+from 
+    root.ln 
 where 
     (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000) 
-or 
+    or 
     (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000)
+;
 ```
 which means:
 
@@ -242,4 +257,197 @@ The execution result of this SQL statement is as follows:
 ![](./chapter4-fig/4.9.jpg)
 
 ### 4.4.2 Down-Frequency Aggregate Query
+This chapter mainly introduces the related examples of down-frequency aggregation query, using the GROUP BY clause of IoTDB SELECT statement, which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. IoTDB supports partitioning result sets according to time intervals, and by default results are sorted by time in ascending order. Detailed SQL syntax and usage specifications can be found in Section 7.1 of this manual. You can also use the Java JDBC standard interface to execute related queries, as detailed in Section 7.2.
+
+The GROUP BY statement provides users with three types of specified parameters:
+
+* Parameter 1: Time interval for dividing the time axis
+* Parameter 2: Time axis origin position (optional)
+* Parameter 3: The display window(s) (one or more) on the time axis
+
+The actual meaning of the three types of parameters is shown in Figure 4.2 below. Among them, the paramter 2 is optional. Next we will give three typical examples of frequency reduction aggregation: parameter 2 specified, parameter 2 not specified, and time filtering conditions specified.
+
+![](./chapter4-fig/4.10.jpg)
+<center>**Figure 4.2 The actual meaning of the three types of parameters**</center>
+
+#### 4.4.2.1 Down-Frequency Aggregate Query without Specifying the Time Axis Origin Position
+The SQL statement is:
+```
+select 
+    count(status), max_value(temperature) 
+from 
+    root.ln.wf01.wt01 
+group by 
+    (1d, [2017-11-01T00:00:00, 2017-11-07T23:00:00])
+;
+```
+which means:
+
+Since the user does not specify the time axis origin position, the GROUP BY statement will by default set the origin at 0 (+0 time zone) on January 1, 1970.
+
+The first parameter of the GROUP BY statement above is the time interval for dividing the time axis. Taking this parameter (1d) as time interval and the default origin as the dividing origin, the time axis is divided into several continuous intervals, which are [0,1d], [1d, 2d], [2d, 3d], etc.
+
+The second parameter of the GROUP BY statement above is the display window paramter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00].
+
+Then the system will use the time and value filtering condition in the WHERE clause and the second parameter of the GROUP BY statement as the data filtering condition to obtain the data satisfying the filtering condition (which in this case is the data in the range of [2017-11-01T00:00:00, 2017-11-07 T23:00:00]), and map these data to the previously segmented time axis (in this case there are mapped data in every 1-day period from 2017-11-01T00:00:00 to 2017-11-07T23:00:00:00).
+
+Since there is data for each time period in the result range to be displayed, the execution result of the SQL statement is shown below:
+![](./chapter4-fig/4.11.jpg)
+
+#### 4.4.2.2 Down-Frequency Aggregate Query Specifying the Time Axis Origin Position
+The SQL statement is:
+```
+select 
+    count(status), max_value(temperature) 
+from 
+    root.ln.wf01.wt01 
+group by
+    (1d, 2017-11-03 00:00:00, [2017-11-01 00:00:00, 2017-11-07 23:00:00])
+;
+```
+which means:
+
+Since the user specifies the time axis origin position parameter as 2017-11-03 00:00:00, the GROUP BY statement will set the origin at 0 (system default time zone) on November 3, 2017.
+
+The first parameter of the GROUP BY statement above is the time interval for dividing the time axis. Taking this parameter (1d) as time interval and the speicified origin as the dividing origin, the time axis is divided into several continuous intervals, which are [2017-11-02T00:00:00, 2017-11-03T00:00:00], [2017-11-03T00:00:00, 2017-11-04T00:00:00], etc.
+
+The third parameter of the GROUP BY statement above is the display window paramter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00].
+
+hen the system will use the time and value filtering condition in the WHERE clause and the second parameter of the GROUP BY statement as the data filtering condition to obtain the data satisfying the filtering condition (which in this case is the data in the range of [2017-11-01T00:00:00, 2017-11-07T23:00:00]), and map these data to the previously segmented time axis (in this case there are mapped data in every 1-day period from 2017-11-01T00:00:00 to 2017-11-07T23:00:00:00).
+
+Since there is data for each time period in the result range to be displayed, the execution result of the SQL statement is shown below:
+![](./chapter4-fig/4.12.jpg)
+
+#### 4.4.2.3 Down-Frequency Aggregate Query Specifying the Time Filtering Conditions
+The SQL statement is:
+```
+select 
+    count(status), max_value(temperature) 
+from 
+    root.ln.wf01.wt01 
+where 
+    time > 2017-11-03T06:00:00 and temperature > 20 
+group by
+    (1h, [2017-11-03T00:00:00, 2017-11-03T23:00:00])
+;
+```
+which means:
+
+Since the user does not specify the time axis origin position, the GROUP BY statement will by default set the origin at 0 (+0 time zone) on January 1, 1970.
+
+The first parameter of the GROUP BY statement above is the time interval for dividing the time axis. Taking this parameter (1d) as time interval and the default origin as the dividing origin, the time axis is divided into several continuous intervals, which are [0,1d], [1d, 2d], [2d, 3d], etc.
+
+The second parameter of the GROUP BY statement above is the display window paramter, which determines the final display range is [2017-11-03T00:00:00, 2017-11-03T23:00:00].
+
+Then the system will use the time and value filtering condition in the WHERE clause and the second parameter of the GROUP BY statement as the data filtering condition to obtain the data satisfying the filtering condition (which in this case is the data in the range of (2017-11-03T06:00:00, 2017-11-03T23:00:00] and satisfying root.ln.wf01.wt01.temperature > 20), and map these data to the previously segmented time axis (in this case there are mapped data in every 1-day period from 2017-11-03T00:06:00 to 2017-11-03T23:00:00).
+
+Since there is  no data in the result range [2017-11-03T00:00:00, 2017-11-03T00:06:00], the aggregation results of this segment will be null. There is data in all other time periods in the result range to be displayed. The execution result of the SQL statement is shown below:
+![](./chapter4-fig/4.13.jpg)
+
+It is worth noting that the path after SELECT in GROUP BY statement must be aggregate function, otherwise the system will give the corresponding error message, as shown below:
+![](./chapter4-fig/4.14.jpg)
+
+### 4.4.3 Index Query (Experimental Function)
+Indexing time series can speed up some queries of this column (such as accelerating aggregate queries), or add new query functions to the column (such as similarity matching introduced in Section 4.4.3.1 of this chapter). User's operations mainly include the establishment, deletion and query of time series.
+
+The present 0.7.0 version of IoTDB supports KvIndex, which is used to speed up the query of time series subsequence similarity matching.
+
+#### 4.4.3.1 KvIndex (Similarity Matching Query)
+In the field of timeseries data, similarity matching is a very common requirement. Users specify a time series subsequence as a pattern, hoping to find in another longer time series all subsequences similar to the specified pattern and return. As shown in Figure 4.3, for a given pattern, there are two subsequences (marked red) similar to the given pattern in a longer time series. Similarity matching requires that the two subsequences be found and returned. KvIndex is the index used to solve the problem of similarity matching.
+
+![](./chapter4-fig/4.15.jpg)
+<center>**Figure 4.3  KvIndex similarity matching query**</center>
+
+##### KvIndex Establishment
+When created, KvIndex divides the time series into a series of equal-length blocks (the block length is parameterized as `window_length` in table 4-2) and creates indexes for the data after a timestamp (the timestamp is parameterized as `since_time` in table 4-2). Note that the time series must already exist before indexing. Successful execution will result in an "execute successfully" prompt that represents the completion of time series index establishment.
+
+Note: After the index establishment, flush operation is required for the index to take effect.
+
+<center>**Table 4-2 KvIndex establishment paramter list**</center>
+
+|Parameter name (case insensitive)|interpretation|
+|:---|:---|
+|window_length|INT32 type; required; KvIndex divides the time series into a series of equal-length blocks, whose length is 'window_length'.|
+|since_time|INT32 type; required; create indexes for data larger than the timestamp 'since_time'; default value 0, i.e., index all data.|
+
+See Section 7.1.4.1 for detailed SQL statements of establishing KvIndex. Here we give a practical example:
+```
+CREATE INDEX 
+    ON root.ln.wf01.wt01.status 
+    USING kvindex 
+        WITH window_length=3, since_time=1000;
+```
+The above example creates a Kvindex for the time series with path root. ln. wf01. wt01. status, and the parameters required for the index are listed after the keyword WITH. Take KvIndex as an example, the following parameters are included: the length of the index block is 3, and the data with the timestamp greater than 1000 is indexed.
+
+##### 4.4.3.1.2 KvIndex Query
+After creating the KvIndex, the user can specify a pattern sequence and specify the KvIndex index query (i.e. similarity matching) for the data within a certain time range of a sequence. See Section 7.1.4.3 of this manual for detailed SQL statements.
+
+Let's explain with a concrete example.
+```
+SELECT 
+    KvIndex(root.ln.wf02.wt02.status,1,100,0.5,1.0,2.5) 
+FROM
+    root.ln.wf01.wt01.status 
+WHERE 
+    time >= 500 
+    and 
+    time <= 1000
+;
+```
+The above example queries data in the column `root.ln.wf01.wt01.status` over a time range of [500, 1000]. Users use the fragment of the `root.ln.wf02.wt02.status` sequence within a time range of [1,100] as a pattern.
+
+For queries on the KvIndex, the time range must be a continuous time period, i.e., the time condition can only be in the following three forms:
+
+(1) time > a, e.g., time > 1000;
+
+(2) time < b, e.g., time < 2000;
+
+(3) time > a and time < b, e.g., time > 1000 and time < 2000.
+
+KvIndex does not support other forms of time condition such as "time > 1000 and time < 2000 and time > 3000".
+
+Users can also specify the remaining three parameters, namely:
+
+(1) KVIndex requires that the Euclidean distance between the pattern and the matching subsequence be less than epsilon, i.e. the epsilon parameter in Table 4-3, which is a required parameter. In the above example, epsilon=0.5;
+
+(2) Since there may be a mean shift between the pattern and the matched subsequence, the user is allowed to specify the mean threshold, i.e., the alpha parameter in Table 4-3, which is an optional parameter with a default value of 0. In the above example, alpha=1.0.
+
+(3) Because there may be a standard deviation shift between the pattern and the matched subsequence, the user is allowed to specify the standard deviation threshold, i.e., the beta parameter in Table 4-3, which is an optional parameter with a default value of 1. In the above example, beta=2.5;
+
+Detailed descriptions of all parameters are given in Table 4-3.
+
+<center>**Table 4-3 KvIndex query paramter list**</center>
+
+|Parameter name (case insensitive)|interpretation|
+|:---|:---|
+|pattern_path|the time series that the pattern belongs to|
+|pattern_start_time|INT64; the start timestamp of the pattern|
+|pattern_end_time|INT64; the end timestamp of the pattern|
+|epsilon|DOUBLE; Euclidean distance threshold between the pattern and the matching subsequence|
+|alpha|DOUBLE; mean threshold; optional; default value 0|
+|beta|DOUBLE; standard deviation threshold; optional; default value 1|
+
+The matching results are sorted in ascending order according to Euclidean distance and returned. The returned result is a triple, including start time, end time and Euclidean distance. The query result of the above example is shown below:
+![](./chapter4-fig/4.16.jpg)
+
+##### 4.4.3.1.3 KvIndex Deletion
+For a time series that has created a KvIndex, the user can delete the time series. Users need to specify the name of the time series to be deleted. See Section 7.1.4.2 of this manual for detailed SQL syntax.
+
+Here we give an example of deletion:
+```
+DROP INDEX kvindex ON root.ln.wf01.wt01.status;
+```
+The above example deletes the KvIndex of the time series with the path `root.ln.wf01.wt01.status`. Successful execution will result in an "execute successfully" prompt that represents the completion of time series index deletion.
+
+###  4.4.4 Automated Fill
+In the actual use of IoTDB, when doing the query operation of time series, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.
+
+Automated fill function refers to filling empty values according to the user's specified method and effective time range when performing time series queries for single or multiple columns. If the queried point's value is not null, the fill function will not work.
+
+Note: In the current version 0.7.0, IoTDB provides users with two methods: Previous and Linear. The previous method fills blanks with previous value. The linear method fills blanks through linear fitting. And the fill function can only be used when performing point-in-time queries.
+
+#### 4.4.4.1 Fill Method
+##### 4.4.4.1.1 Previous Method
+
+
 
