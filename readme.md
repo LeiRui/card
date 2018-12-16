@@ -24,7 +24,7 @@ Based on the description of the above sample scenarios, we provide you with a si
 
 The basic information of the data is shown in Table 4-1.
  
-**Table 4-1 The basic information of the data**
+<center>**Table 4-1 The basic information of the data**</center>
 
 |Name  |Data Type|  Coding | Meaning |
 |:---|:---|:---|:---|
@@ -268,7 +268,7 @@ The GROUP BY statement provides users with three types of specified parameters:
 The actual meanings of the three types of parameters are shown in Figure 4.2 below. Among them, the paramter 2 is optional. Next we will give three typical examples of frequency reduction aggregation: parameter 2 specified, parameter 2 not specified, and time filtering conditions specified.
 
 ![](./chapter4-fig/4.10.jpg)
-<center>** Figure 4.2 The actual meanings of the three types of parameters **</center>
+<center>**Figure 4.2 The actual meanings of the three types of parameters**</center>
 
 #### 4.4.2.1 Down-Frequency Aggregate Query without Specifying the Time Axis Origin Position
 The SQL statement is:
@@ -356,14 +356,14 @@ The present 0.7.0 version of IoTDB supports KvIndex, which is used to speed up t
 In the field of timeseries data, similarity matching is a very common requirement. Users specify a time series subsequence as a pattern, hoping to find in another longer time series all subsequences similar to the specified pattern and return. As shown in Figure 4.3, for a given pattern, there are two subsequences (marked red) similar to the given pattern in a longer time series. Similarity matching requires that the two subsequences be found and returned. KvIndex is the index used to solve the problem of similarity matching.
 
 ![](./chapter4-fig/4.15.jpg)
-<center>** Figure 4.3  KvIndex similarity matching query **</center>
+<center>**Figure 4.3  KvIndex similarity matching query**</center>
 
 ##### 4.4.3.1.1 KvIndex Establishment
 When created, KvIndex divides the time series into a series of equal-length blocks (the block length is parameterized as `window_length` in table 4-2) and creates indexes for the data after a timestamp (the timestamp is parameterized as `since_time` in table 4-2). Note that the time series must already exist before indexing. Successful execution will result in an "execute successfully" prompt that represents the completion of time series index establishment.
 
 Note: After the index establishment, flush operation is required for the index to take effect.
 
-<center>** Table 4-2 KvIndex establishment paramter list **</center>
+<center>**Table 4-2 KvIndex establishment paramter list**</center>
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
@@ -416,7 +416,7 @@ Users can also specify the remaining three parameters, namely:
 
 Detailed descriptions of all parameters are given in Table 4-3.
 
-<center>** Table 4-3 KvIndex query paramter list **</center>
+<center>**Table 4-3 KvIndex query paramter list**</center>
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
@@ -462,7 +462,7 @@ fill
 
 Detailed descriptions of all parameters are given in Table 4-4.
 
-<center>** Table 4-4 Previous fill paramter list **</center>
+<center> **Table 4-4 Previous fill paramter list **</center>
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
@@ -507,7 +507,7 @@ fill
 
 Detailed descriptions of all parameters are given in Table 4-5.
 
-<center>** Table 4-5 Linear fill paramter list **</center>
+<center>**Table 4-5 Linear fill paramter list**</center>
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
@@ -540,7 +540,7 @@ It is worth noting that if there is no value in the specified valid time range, 
 #### 4.4.4.2 Correspondence between Data Type and Fill Method
 Data types and the supported fill methods are shown in Table 4-6.
 
-<center>** Table 4-6 Data types and the supported fill methods **</center>
+<center>**Table 4-6 Data types and the supported fill methods**</center>
 
 |Data Type|Supported Fill Methods|
 |:---|:---|
@@ -557,7 +557,7 @@ It is worth noting that IoTDB will give error prompts for fill methods that are 
 
 When the fill method is not specified, each data type bears its own default fill methods and parameters. The corresponding relationship is shown in Table 4-7.
 
-<center>** Table 4-7 Default fill methods and parameters for various data types **</center>
+<center>**Table 4-7 Default fill methods and parameters for various data types**</center>
 
 |Data Type|Default Fill Methods and Parameters|
 |:---|:---|
