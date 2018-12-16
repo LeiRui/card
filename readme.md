@@ -24,7 +24,7 @@ Based on the description of the above sample scenarios, we provide you with a si
 
 The basic information of the data is shown in Table 4-1.
  
-<center>** Table 4-1 The basic information of the data **</center>
+** Table 4-1 The basic information of the data **
 
 |Name  |Data Type|  Coding | Meaning |
 |:---|:---|:---|:---|
