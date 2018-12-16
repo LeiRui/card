@@ -265,10 +265,10 @@ The GROUP BY statement provides users with three types of specified parameters:
 * Parameter 2: Time axis origin position (optional)
 * Parameter 3: The display window(s) (one or more) on the time axis
 
-The actual meaning of the three types of parameters is shown in Figure 4.2 below. Among them, the paramter 2 is optional. Next we will give three typical examples of frequency reduction aggregation: parameter 2 specified, parameter 2 not specified, and time filtering conditions specified.
+The actual meanings of the three types of parameters are shown in Figure 4.2 below. Among them, the paramter 2 is optional. Next we will give three typical examples of frequency reduction aggregation: parameter 2 specified, parameter 2 not specified, and time filtering conditions specified.
 
 ![](./chapter4-fig/4.10.jpg)
-<center>**Figure 4.2 The actual meaning of the three types of parameters**</center>
+<center>**Figure 4.2 The actual meanings of the three types of parameters**</center>
 
 #### 4.4.2.1 Down-Frequency Aggregate Query without Specifying the Time Axis Origin Position
 The SQL statement is:
@@ -358,17 +358,17 @@ In the field of timeseries data, similarity matching is a very common requiremen
 ![](./chapter4-fig/4.15.jpg)
 <center>**Figure 4.3  KvIndex similarity matching query**</center>
 
-##### KvIndex Establishment
+##### 4.4.3.1.1 KvIndex Establishment
 When created, KvIndex divides the time series into a series of equal-length blocks (the block length is parameterized as `window_length` in table 4-2) and creates indexes for the data after a timestamp (the timestamp is parameterized as `since_time` in table 4-2). Note that the time series must already exist before indexing. Successful execution will result in an "execute successfully" prompt that represents the completion of time series index establishment.
 
 Note: After the index establishment, flush operation is required for the index to take effect.
 
 <center>**Table 4-2 KvIndex establishment paramter list**</center>
 
-|Parameter name (case insensitive)|interpretation|
+|Parameter name (case insensitive)|Interpretation|
 |:---|:---|
-|window_length|INT32 type; required; KvIndex divides the time series into a series of equal-length blocks, whose length is 'window_length'.|
-|since_time|INT32 type; required; create indexes for data larger than the timestamp 'since_time'; default value 0, i.e., index all data.|
+|window_length|INT32 type; mandatory; KvIndex divides the time series into a series of equal-length blocks, whose length is 'window_length'.|
+|since_time|INT32 type; mandatory; create indexes for data larger than the timestamp 'since_time'; default value 0, i.e., index all data.|
 
 See Section 7.1.4.1 for detailed SQL statements of establishing KvIndex. Here we give a practical example:
 ```
@@ -408,7 +408,7 @@ KvIndex does not support other forms of time condition such as "time > 1000 and 
 
 Users can also specify the remaining three parameters, namely:
 
-(1) KVIndex requires that the Euclidean distance between the pattern and the matching subsequence be less than epsilon, i.e. the epsilon parameter in Table 4-3, which is a required parameter. In the above example, epsilon=0.5;
+(1) KVIndex requires that the Euclidean distance between the pattern and the matching subsequence be less than epsilon, i.e. the epsilon parameter in Table 4-3, which is a mandatory parameter. In the above example, epsilon=0.5;
 
 (2) Since there may be a mean shift between the pattern and the matched subsequence, the user is allowed to specify the mean threshold, i.e., the alpha parameter in Table 4-3, which is an optional parameter with a default value of 0. In the above example, alpha=1.0.
 
@@ -418,7 +418,7 @@ Detailed descriptions of all parameters are given in Table 4-3.
 
 <center>**Table 4-3 KvIndex query paramter list**</center>
 
-|Parameter name (case insensitive)|interpretation|
+|Parameter name (case insensitive)|Interpretation|
 |:---|:---|
 |pattern_path|the time series that the pattern belongs to|
 |pattern_start_time|INT64; the start timestamp of the pattern|
@@ -448,6 +448,131 @@ Note: In the current version 0.7.0, IoTDB provides users with two methods: Previ
 
 #### 4.4.4.1 Fill Method
 ##### 4.4.4.1.1 Previous Method
+When the value of the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows (see Section 7.1.3.6 for detailed syntax):
+```
+select 
+    <path> 
+from 
+    <prefixPath> 
+where 
+    time = <T> 
+fill
+    (<data_type>[previous, <before_range>], …)
+```
+
+Detailed descriptions of all parameters are given in Table 4-4.
+
+<center>**Table 4-4 Previous fill paramter list**</center>
+
+|Parameter name (case insensitive)|Interpretation|
+|:---|:---|
+|path, prefixPath|query path; mandatory field|
+|T|query timestamp (only one can be specified); mandatory field|
+|data_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
+|before_range|represents the valid time range of the previous method. The previous method works when there are values in the [T-before_range, T] range. When before_range is not specified, before_range takes the default value T; optional field|
+
+Here we give an example of filling null values using the previous method. The SQL statement is as follows:
+```
+select 
+    temperature 
+from 
+    root.sgcc.wf03.wt01 
+where 
+    time = 2017-11-01T16:37:50.000 
+fill
+    (float[previous, 1m]) 
+```
+which means:
+
+Because the time series root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp of 2017-11-01T16:37:50.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
+
+On the sample data given in Section 4.1.2 of this chapter, the execution result of this statement is shown below:
+![](./chapter4-fig/4.17.jpg)
+
+It is worth noting that if there is no value in the specified valid time range, the system will not fill the null value, as shown below:
+![](./chapter4-fig/4.18.jpg)
+
+##### 4.4.4.1.2 Linear Method
+When the value of the queried timestamp is null, the value of the previous and the next timestamp is used to fill the blank. The formalized linear method is as follows (see Section 7.1.3.6 for detailed syntax):
+```
+select 
+    <path> 
+from 
+    <prefixPath> 
+where 
+    time = <T> 
+fill
+    (<data_type>[linear, <before_range>, <after_range>]…)
+```
+
+Detailed descriptions of all parameters are given in Table 4-5.
+
+<center>**Table 4-5 Linear fill paramter list**</center>
+
+|Parameter name (case insensitive)|Interpretation|
+|:---|:---|
+|path, prefixPath|query path; mandatory field|
+|T|query timestamp (only one can be specified); mandatory field|
+|data_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
+|before_range, after_range|represents the valid time range of the linear method. The previous method works when there are values in the [T-before_range, T+after_range] range. When before_range and after_range are not explicitly specified, both before_range and after_range default to infinity; optional field|
+
+Here we give an example of filling null values using the linear method. The SQL statement is as follows:
+```
+select 
+    temperature 
+from 
+    root.sgcc.wf03.wt01 
+where 
+    time = 2017-11-01T16:37:50.000 
+fill
+    (float [linear, 1m, 1m])
+```
+which means:
+
+Because the time series root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 21.927326, the next timestamp 2017-11-01T16:39:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 25.311783 to perform linear fitting calculation: 21.927326 + (25.311783-21.927326)/60s*50s = 24.747707
+
+On the sample data given in Section 4.1.2, the execution result of this statement is shown below:
+![](./chapter4-fig/4.17.jpg)
+
+It is worth noting that if there is no value in the specified valid time range, the system will not fill the null value, as shown below:
+![](./chapter4-fig/4.18.jpg)
+
+#### 4.4.4.2 Correspondence between Data Type and Fill Method
+Data types and the supported fill methods are shown in Table 4-6.
+
+<center>**Table 4-6 Data types and the supported fill methods**</center>
+
+|Data Type|Supported Fill Methods|
+|:---|:---|
+|boolean|previous|
+|int32|previous, linear|
+|int64|previous, linear|
+|float|previous, linear|
+|double|previous, linear|
+|text|previous|
+
+It is worth noting that IoTDB will give error prompts for fill methods that are not supported by data types, as shown below:
+![](./chapter4-fig/4.19.jpg)
+
+When the fill method is not specified, each data type bears its own default fill methods and parameters. The corresponding relationship is shown in Table 4-7.
+
+<center>**Table 4-7 Default fill methods and parameters for various data types**</center>
+
+|Data Type|Default Fill Methods and Parameters|
+|:---|:---|
+|boolean|previous, 0|
+|int32|linear, 0, 0|
+|int64|linear, 0, 0|
+|float|linear, 0, 0|
+|double|linear, 0, 0|
+|text|previous, 0|
+
+Note: In version 0.7.0, at least one fill method should be specified in the Fill statement.
+
+
+
+
+
 
 
 
