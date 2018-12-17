@@ -60,7 +60,7 @@ IoTDB > set storage group to root.sgcc
 
 We can thus create two storage groups using the above two SQL statements.
 
-It is worth noting that when the path itself or the parent/child layer of the path is already set as a storage group, the path is then not allowed to be set as a storage group. For example, it is not feasible to set `root.ln.wf01` as a storage group when there exist two storage groups `root.ln` and `root.sgcc`. The system will give the corresponding error message as shown below:
+It is worth noting that when the path itself or the parent/child layer of the path is already set as a storage group, the path is then not allowed to be set as a storage group. For example, it is not feasible to set `root.ln.wf01` as a storage group when there exist two storage groups `root.ln` and `root.sgcc`. The system will give the corresponding error prompt as shown below:
 
 ```
 IoTDB> set storage group to root.ln.wf01
@@ -89,7 +89,7 @@ IoTDB > create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encod
 IoTDB > create timeseries root.sgcc.wf03.wt01.temperature with datatype=FLOAT,encoding=RLE
 ```
 
-It is worth noting that when in the CRATE TIMESERIES statement the encoding method conflicts with the data type, the system will give the corresponding error message as shown below:
+It is worth noting that when in the CRATE TIMESERIES statement the encoding method conflicts with the data type, the system will give the corresponding error prompt as shown below:
 ```
 IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=TS_2DIFF
 error: encoding TS_2DIFF does not support BOOLEAN
@@ -112,7 +112,7 @@ The results are shown below respectly:
 ![](./chapter4-fig/4.3.jpg)
 ![](./chapter4-fig/4.4.jpg)
 
-It is worth noting that when the path queries does not exist, the system will give the corresponding error message as shown below:
+It is worth noting that when the path queries does not exist, the system will give the corresponding error prompt as shown below:
 ```
 IoTDB> show timeseries root.ln.wf03
 Msg: Failed to fetch timeseries root.ln.wf03's metadata because: Timeseries does not exist.
@@ -344,7 +344,7 @@ Then the system will use the time and value filtering condition in the WHERE cla
 Since there is  no data in the result range [2017-11-03T00:00:00, 2017-11-03T00:06:00], the aggregation results of this segment will be null. There is data in all other time periods in the result range to be displayed. The execution result of the SQL statement is shown below:
 ![](./chapter4-fig/4.13.jpg)
 
-It is worth noting that the path after SELECT in GROUP BY statement must be aggregate function, otherwise the system will give the corresponding error message, as shown below:
+It is worth noting that the path after SELECT in GROUP BY statement must be aggregate function, otherwise the system will give the corresponding error prompt, as shown below:
 ![](./chapter4-fig/4.14.jpg)
 
 ### 4.4.3 Index Query (Experimental Function)
@@ -791,3 +791,145 @@ slimit 1 soffset 2
 ```
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 ![](./chapter4-fig/4.35.jpg)
+
+## 4.5 Data Maintenance
+### 4.5.1 Data Update
+Users can use UPDATE statements to update data over a period of time in a specified time series. Details of SQL usage can be found in Section 7.1.3.2 of this manual. When updating data, users can select a time series to be updated (version 0.7.0 does not support multiple time series updates) and specify a time point or period to be updated (version 0.7.0 must have time filtering conditions).
+
+In a JAVA programming environment, you can use the JDBC API to execute single or batch UPDATE statements. See Section 7.2 of this manual for details on how to use JDBC.
+
+#### 4.5.1.1 Single Sensor Time Series Update
+Taking the power supply status of ln group wf02 plant wt02 device as an example, there exists such a usage scenario:
+
+After data access and analysis, it is found that the power supply status from 2017-11-01 15:54:00 to 2017-11-01 16:00:00 is true, but the actual power supply status is abnormal. You need to update the status to false during this period. The SQL statement for this operation is:
+```
+update 
+    root.ln.wf02 SET wt02.status = false
+where 
+    time <=2017-11-01T16:00:00 and time >= 2017-11-01T15:54:00
+```
+It should be noted that when the updated data type does not match the actual data type, IoTDB will give the corresponding error prompt as shown below:
+```
+IoTDB> update root.ln.wf02 set wt02.status = 1205 where time < now()
+error: The BOOLEAN data type should be true/TRUE or false/FALSE
+```
+When the updated path does not exist, IoTDB will give the corresponding error prompt as shown below:
+```
+IoTDB> update root.ln.wf02 set wt02.sta = false where time < now()
+error: do not select any existing path
+```
+### 4.5.2 Data Deletion
+Users can delete data that meet the deletion condition in the specified time series by using the DELETE statement. Details of SQL usage can be found in Section 7.1.3.3 of this manual. When deleting data, users can select one or more timeseries paths, prefix paths, or paths with star  to delete data before a certain time (version 0.7.0 does not support the deletion of data within a closed time interval).
+
+In a JAVA programming environment, you can use the JDBC API to execute single or batch UPDATE statements. See Section 7.2 of this manual for details on how to use JDBC.
+
+#### 4.5.2.1 Delete Single Time Series
+Taking ln Group as an example, there exists such a usage scenario:
+
+The wf02 plant's wt02 device has many segments of errors in its power supply status before 2017-11-01 16:26:00, and the data cannot be analyzed correctly. The erroneous data affected the correlation analysis with other devices. At this point, the data before this time point needs to be deleted. The SQL statement for this operation is
+```
+delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
+```
+
+#### 4.5.2.2 Delete Multiple Time Series
+When both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, the prefix path with broader meaning (see Section 3.1.6 of this manual) or the path with star can be used to delete the data. The SQL statement for this operation is:
+```
+delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
+```
+or
+```
+delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
+```
+It should be noted that when the deleted path does not exist, IoTDB will give the corresponding error prompt as shown below:
+```
+IoTDB> delete from root.ln.wf03.wt02.status where time < now()
+error: TimeSeries does not exist and cannot be delete data
+```
+## 4.6 Priviledge Management
+IoTDB provides users with priviledge management operations, so as to ensure data security.
+
+We will show you basic user priviledge management operations through the following specific examples. Detailed SQL syntax and usage details can be found in Section 7.1.5 of this manual. At the same time, in the JAVA programming environment, you can use the JDBC API to execute priviledge management statements in a single or batch mode. See section 7.2 for details on how to use JDBC.
+
+### 4.6.1 Basic Concepts
+#### 4.6.1.1 User
+The user is the legal user of the database. A user corresponds to a unique username and has a password as a means of authentication. Before using a database, a person must first provide a legitimate username and password to make himself/herself a user.
+#### 4.6.1.2 Priviledge
+The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, the user is said to have the priviledge to perform the operation. Priviledges can be divided into data management priviledge (such as adding, deleting and modifying data) and authority management priviledge (such as creation and deletion of users and roles, granting and revoking of priviledges, etc.). Data management priviledge often needs a path to limit its effective range, which is a subtree rooted at the path's corresponding node (see IoTDB's data organization for details).
+
+#### 4.6.1.3 Role
+A role is a set of priviledges and has a unique role name as an identifier. A user usually corresponds to a real identity (such as a traffic dispatcher), while a real identity may correspond to multiple users. These users with the same real identity tend to have the same priviledges. Roles are abstractions that can unify the management of such priviledges.
+
+#### 4.6.1.4 Default User
+There is a default user in IoTDB after the initial installation: root, and the default password is root. This user is an administrator user, who cannot be deleted and has all the priviledges. Neither can new priviledges be granted to the root user nor can priviledges owned by the root user be deleted.
+
+### 4.6.2 Authorization Control Operation Examples
+According to the sample data described in Section 4.1 of this chapter, the sample data of IoTDB may belong to different power generation groups such as ln, sgcc, etc. Different power generation groups do not want others to obtain their own database data, so we need to have data priviledge isolated at the group layer.
+
+#### 4.6.2.1 User Creation
+We can create two users for ln and sgcc groups, named ln_write_user and sgcc_write_user, with both passwords being write_pwd. The SQL statement is:
+```
+CREATE USER ln_write_user write_pwd
+CREATE USER sgcc_write_user write_pwd
+```
+Then use the following SQL statement to show the user:
+```
+LIST USER
+```
+As can be seen from the result shown below, the two users have been created:
+![](./chapter4-fig/4.36.jpg)
+#### 4.6.2.2 Grant User Priviledge
+At this point, although two users have been created, they do not have any priviledges, so they can not operate on the database. For example, we use ln_write_user to write data in the database, the SQL statement is:
+```
+INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
+```
+The SQL statement will not be executed and the corresponding error prompt is given as follows:
+![](./chapter4-fig/4.37.jpg)
+Now, we grant the two users write priviledges to the corresponding storage groups, and try to write data again. The SQL statement is:
+```
+GRANT USER ln_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.ln
+GRANT USER sgcc_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.sgcc
+INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
+```
+The execution result is as follows:
+![](./chapter4-fig/4.38.jpg)
+
+### 4.6.3 Other Instructions
+#### 4.6.3.1 The Relationship among Users, Priviledges and Roless
+A Role is a set of priviledges, and priviledges and roles are both attributes of users. That is, a role can have several priviledges and a user can have several roles and priviledges (called the user's own priviledges).
+
+At present, there is no conflicting priviledge in IoTDB, so the real priviledges of a user is the union of the user's own priviledges and the priviledges of the user's roles. That is to say, to determine whether a user can perform an operation, it depends on whether one of the user's own priviledges or the priviledges of the user's roles permits the operation. The user's own priviledges and priviledges of the user's roles may overlap, but it does not matter.
+
+It should be noted that if users have a priviledge (corresponding to operation A) themselves and their roles contain the same priviledge, then revoking the priviledge from the users themselves alone can not prohibit the users from performing operation A, since it is necessary to revoke the priviledge from the role, or revoke the role from the user. Similarly, revoking the priviledge from the users's roles alone can not prohibit the users from performing operation A.
+
+At the same time, changes to roles are immediately reflected on all users who own the roles. For example, adding certain priviledges to roles will immediately give all users who own the roles corresponding priviledges, and deleting certain priviledges will also deprive the corresponding users of the priviledges (unless the users themselves have the priviledges).
+#### 4.6.3.2 List of Priviledges Included in the System
+
+<center>**Table 4-8 List of Priviledges Included in the System**</center>
+
+|Priviledge Name|Interpretation|
+|:---|:---|
+|SET_STORAGE_GROUP|create time series; set storage groups; path dependent|
+|INSERT_TIMESERIES|insert data; path dependent|
+|UPDATE_TIMESERIES|update data; path dependent|
+|READ_TIMESERIES|query data; path dependent|
+|DELETE_TIMESERIES|delete data or time series; path dependent|
+|CREATE_USER|create users; path independent|
+|DELETE_USER|delete users; path independent|
+|MODIFY_PASSWORD|modify passwords for all users; path independent; (Those who do not have this priviledge can still change their own asswords. )|
+|LIST_USER|list all users; list a user's priviledges; list a user's roles with three kinds of operation priviledges; path independent|
+|GRANT_USER_PRIVILEGE|grant user priviledges; path independent|
+|REVOKE_USER_PRIVILEGE|revoke user priviledges; path independent|
+|GRANT_USER_ROLE|grant user roles; path independent|
+|REVOKE_USER_ROLE|revoke user roles; path independent|
+|CREATE_ROLE|create roles; path independent|
+|DELETE_ROLE|delete roles; path independent|
+|LIST_ROLE|list all roles; list the priviledges of a role; list the three kinds of operation priviledges of all users owning a role; path independent|
+|GRANT_ROLE_PRIVILEGE|grant role priviledges; path independent|
+|REVOKE_ROLE_PRIVILEGE|revoke role priviledges; path independent|
+
+#### 4.6.3.3 Username Restrictions
+IoTDB specifies that the character length of a username should not be less than 4, and the username cannot contain spaces.
+#### 4.6.3.4 Password Restrictions
+IoTDB specifies that the character length of a password should not be less than 4, and the password cannot contain spaces. The password is encrypted with MD5.
+#### 4.6.3.5 Role Name Restrictions
+IoTDB specifies that the character length of a role name should not be less than 4, and the role name cannot contain spaces.
